@@ -1,28 +1,54 @@
 <?php
 
 class Validation {
+
     private array $errors = [];
+    private array $data = [];
 
-    public function required($field, $value) {
-        if (empty(trim($value))) {
-            $this->errors[$field][] = ucfirst($field) . " is required.";
-        }
+    public function __construct(array $data = null) {
+        $this->data = $data ?? $_POST;
     }
 
-    public function email($field, $value) {
-        if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            $this->errors[$field][] = ucfirst($field) . " must be a valid email address."; 
-        }
-    }
+    public function validate(array $rules) {
+        foreach ($rules as $field => $fieldRules) {
+            $value = trim($this->data[$field] ?? '');
 
-    public function min($field, $value, $minLimit) {
-        if (!empty($value) && strlen(trim($value)) < $minLimit) {
-            $this->errors[$field][] = ucfirst($field) . " must be at least $minLimit characters."; 
-        }
-    }
+            foreach ($fieldRules as $rule) {
+                $ruleName = $rule;
+                $ruleParam = null;
 
-    public function hasError(): bool {
-        return !empty($this->errors);
+                if (str_contains($rule, ':')) {
+                    [$ruleName, $ruleParam] = explode(':', $rule);
+                }
+
+                switch ($ruleName) {
+                    case 'required':
+                        if (empty($value) && $value !== '0') {
+                            $this->errors[$field][] = ucfirst($field) . " is required.";
+                        }
+                        break;
+
+                    case 'email':
+                        if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                            $this->errors[$field][] = ucfirst($field) . " must be a valid email address.";
+                        }
+                        break;
+
+                    case 'string':
+                    case 'srting': 
+                        if (!empty($value) && !is_string($value)) {
+                            $this->errors[$field][] = ucfirst($field) . " must be a string.";
+                        }
+                        break;
+
+                    case 'min':
+                        if (!empty($value) && strlen($value) < (int)$ruleParam) {
+                            $this->errors[$field][] = ucfirst($field) . " must be at least $ruleParam characters.";
+                        }
+                        break;
+                }
+            }
+        }
     }
 
     public function getErrors(): array {
